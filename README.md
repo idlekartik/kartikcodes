@@ -1,24 +1,24 @@
 # KartikExtras Installer Portal
 
-Animated landing page + one-command Linux installer scripts.
-
-## Run locally
+Main command:
 ```bash
-cd scripts
-sudo bash install.sh
+bash <(curl -s https://idlekartik.github.io/kartikcodes/scripts/install.sh)
 ```
 
-## Public command after hosting
-```bash
-bash <(curl -s https://YOUR-DOMAIN.com/scripts/install.sh)
-```
+Credits:
+Made by KartikExtras
 
-## Host options
-- GitHub Pages
-- Netlify / Cloudflare Pages / Vercel static
-- VPS + Nginx
+Included Blueprint files:
+- mcplugins.blueprint
+- minecraftplayermanager.blueprint
+- nebula.blueprint
+- snowflakes.blueprint
+- subdomains.blueprint
+- versionchanger.blueprint
+- euphoriatheme.blueprint
+- loader.blueprint
 
-## Safety
-Read scripts before running. Run only on your own VPS. The Pterodactyl auto-installer option uses an unofficial community installer and asks for YES confirmation.
+Theme menu:
+7 -> Pterodactyl Theme Installer
 
 Made by KartikExtras
