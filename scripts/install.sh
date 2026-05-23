@@ -5,16 +5,19 @@ RED="\033[0;31m"
 GREEN="\033[0;32m"
 CYAN="\033[0;36m"
 YELLOW="\033[1;33m"
-MAGENTA="\033[0;35m"
 NC="\033[0m"
 
 need_root() {
   if [[ "${EUID}" -ne 0 ]]; then
     echo -e "${RED}Run as root. Example: sudo bash install.sh${NC}"
-    echo -e "${YELLOW}If using curl command, login as root first or use:${NC}"
-    echo "sudo bash -c 'bash <(curl -s YOUR_LINK)'"
+    echo "bash <(curl -s https://idlekartik.github.io/kartikcodes/scripts/install.sh)"
     exit 1
   fi
+}
+
+pause() {
+  echo
+  read -rp "Press Enter..."
 }
 
 banner() {
@@ -29,13 +32,8 @@ banner() {
 ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝╚═╝  ╚═╝
 BANNER
   echo -e "${NC}${CYAN}KartikExtras Installer Portal${NC}"
-  echo -e "${YELLOW}Single-file installer • No missing script errors${NC}"
+  echo -e "${YELLOW}Made by KartikExtras${NC}"
   echo "------------------------------------------------------------"
-}
-
-pause() {
-  echo
-  read -rp "Press Enter..."
 }
 
 server_info() {
@@ -118,7 +116,7 @@ EOF
   ufw allow 25565/tcp || true
   ufw allow 25565/udp || true
 
-  echo -e "${YELLOW}[9/9] Final check${NC}"
+  echo -e "${YELLOW}[9/9] Final cleanup${NC}"
   apt-get autoremove -y
   echo -e "${GREEN}VPS Optimizer complete. Reboot recommended after major upgrades.${NC}"
 }
@@ -185,13 +183,14 @@ pterodactyl_menu() {
   while true; do
     clear
     echo -e "${RED}KartikExtras Pterodactyl Panel/Wings Menu${NC}"
+    echo -e "${YELLOW}Made by KartikExtras${NC}"
     echo "------------------------------------------------------------"
     echo -e "${YELLOW}1.${NC} Install dependencies for Pterodactyl Panel"
     echo -e "${YELLOW}2.${NC} Install Docker for Wings"
     echo -e "${YELLOW}3.${NC} Open Pterodactyl/Wings ports"
     echo -e "${YELLOW}4.${NC} Create Pterodactyl directories"
-    echo -e "${YELLOW}5.${NC} Launch community auto-installer"
-    echo -e "${YELLOW}6.${NC} Show official docs"
+    echo -e "${YELLOW}5.${NC} Launch Panel/Wings auto-installer"
+    echo -e "${YELLOW}6.${NC} Show docs links"
     echo -e "${YELLOW}7.${NC} Back"
     echo "------------------------------------------------------------"
     read -rp "Choose option: " p
@@ -223,8 +222,7 @@ pterodactyl_menu() {
         pause
         ;;
       5)
-        echo -e "${YELLOW}This runs an unofficial community installer from GitHub.${NC}"
-        echo -e "${YELLOW}Use only if you trust/review it. Continue?${NC}"
+        echo -e "${YELLOW}This will run Panel/Wings auto-installer.${NC}"
         read -rp "Type YES to continue: " confirm
         if [[ "$confirm" == "YES" ]]; then
           bash <(curl -s https://raw.githubusercontent.com/pterodactyl-installer/pterodactyl-installer/master/install.sh)
@@ -245,64 +243,58 @@ pterodactyl_menu() {
   done
 }
 
-theme_manager() {
+blueprint_installer() {
   need_root
-  PANEL_DIR="${PANEL_DIR:-/var/www/pterodactyl}"
-  BACKUP_DIR="/root/kartikextras-theme-backups"
+  clear
+  echo -e "${RED}KartikExtras Blueprint Installer${NC}"
+  echo -e "${YELLOW}Made by KartikExtras${NC}"
+  echo "------------------------------------------------------------"
+  echo "This will install Blueprint for Pterodactyl."
+  echo "Command:"
+  echo "bash <(curl -fsSL https://github.com/infinityForge-labs/blueprint-installer/raw/refs/heads/main/ultra-install.sh)"
+  echo "------------------------------------------------------------"
+  read -rp "Type YES to run Blueprint installer: " confirm
+  if [[ "$confirm" == "YES" ]]; then
+    bash <(curl -fsSL https://github.com/infinityForge-labs/blueprint-installer/raw/refs/heads/main/ultra-install.sh)
+  else
+    echo "Cancelled."
+  fi
+}
 
-  backup_panel() {
-    mkdir -p "$BACKUP_DIR"
-    if [[ ! -d "$PANEL_DIR" ]]; then
-      echo -e "${RED}Panel directory not found: $PANEL_DIR${NC}"
-      echo "Set custom path example:"
-      echo "PANEL_DIR=/var/www/pterodactyl bash install.sh"
-      return 1
-    fi
-    tar -czf "$BACKUP_DIR/panel-$(date +%F-%H%M%S).tar.gz" -C "$(dirname "$PANEL_DIR")" "$(basename "$PANEL_DIR")"
-    echo -e "${GREEN}Backup saved in $BACKUP_DIR${NC}"
-  }
+theme_app() {
+  need_root
+  clear
+  echo -e "${RED}KartikExtras Theme Installer App${NC}"
+  echo -e "${YELLOW}Made by KartikExtras${NC}"
+  echo "------------------------------------------------------------"
+  echo "This will run:"
+  echo "bash <(curl -s https://ptero.jishnu.site)"
+  echo "------------------------------------------------------------"
+  read -rp "Type YES to run Theme Installer App: " confirm
+  if [[ "$confirm" == "YES" ]]; then
+    bash <(curl -s https://ptero.jishnu.site)
+  else
+    echo "Cancelled."
+  fi
+}
 
+theme_installer() {
+  need_root
   while true; do
     clear
-    echo -e "${RED}KartikExtras Pterodactyl Theme Manager${NC}"
+    echo -e "${RED}KartikExtras Pterodactyl Theme Installer${NC}"
+    echo -e "${YELLOW}Made by KartikExtras${NC}"
     echo "------------------------------------------------------------"
-    echo -e "${YELLOW}1.${NC} Backup current panel"
-    echo -e "${YELLOW}2.${NC} Prepare theme from ZIP URL"
-    echo -e "${YELLOW}3.${NC} Prepare theme from local ZIP"
-    echo -e "${YELLOW}4.${NC} Back"
+    echo -e "${YELLOW}1.${NC} Blueprint Installer for Pterodactyl"
+    echo -e "${YELLOW}2.${NC} Theme Names / Theme Installer App"
+    echo -e "${YELLOW}3.${NC} Back"
     echo "------------------------------------------------------------"
-    echo -e "${CYAN}Safe mode: backup + extract/review. It will not blindly overwrite panel files.${NC}"
     read -rp "Choose option: " t
 
     case "$t" in
-      1)
-        backup_panel
-        pause
-        ;;
-      2)
-        read -rp "Theme ZIP direct URL: " url
-        [[ -z "$url" ]] && echo "No URL." && pause && continue
-        backup_panel || true
-        tmp="/tmp/kartik-theme-$$"
-        mkdir -p "$tmp/theme"
-        curl -L "$url" -o "$tmp/theme.zip"
-        unzip -o "$tmp/theme.zip" -d "$tmp/theme"
-        echo -e "${YELLOW}Theme extracted to: $tmp/theme${NC}"
-        echo -e "${YELLOW}Review files before copying to: $PANEL_DIR${NC}"
-        pause
-        ;;
-      3)
-        read -rp "Local theme ZIP path: " zip_path
-        [[ ! -f "$zip_path" ]] && echo "File not found." && pause && continue
-        backup_panel || true
-        tmp="/tmp/kartik-theme-$$"
-        mkdir -p "$tmp/theme"
-        unzip -o "$zip_path" -d "$tmp/theme"
-        echo -e "${YELLOW}Theme extracted to: $tmp/theme${NC}"
-        echo -e "${YELLOW}Review files before copying to: $PANEL_DIR${NC}"
-        pause
-        ;;
-      4) return ;;
+      1) blueprint_installer; pause ;;
+      2) theme_app; pause ;;
+      3) return ;;
       *) echo "Invalid"; pause ;;
     esac
   done
@@ -322,7 +314,7 @@ while true; do
   echo -e "${YELLOW}4.${NC} Node.js 20 Installer"
   echo -e "${YELLOW}5.${NC} Minecraft Server Folder Setup"
   echo -e "${YELLOW}6.${NC} Pterodactyl Panel/Wings Menu"
-  echo -e "${YELLOW}7.${NC} Pterodactyl Theme Manager"
+  echo -e "${YELLOW}7.${NC} Pterodactyl Theme Installer"
   echo -e "${YELLOW}8.${NC} Full Setup: Optimize + Docker + Pterodactyl Menu"
   echo -e "${YELLOW}9.${NC} Server Info"
   echo -e "${YELLOW}10.${NC} Exit"
@@ -336,7 +328,7 @@ while true; do
     4) install_node; pause ;;
     5) minecraft_server_setup; pause ;;
     6) pterodactyl_menu ;;
-    7) theme_manager ;;
+    7) theme_installer ;;
     8) full_setup; pause ;;
     9) server_info; pause ;;
     10) exit 0 ;;
