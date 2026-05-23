@@ -5,10 +5,14 @@ RED="\033[0;31m"
 GREEN="\033[0;32m"
 CYAN="\033[0;36m"
 YELLOW="\033[1;33m"
+MAGENTA="\033[0;35m"
+WHITE="\033[1;37m"
+DIM="\033[2m"
 NC="\033[0m"
 
 SITE_URL="https://idlekartik.github.io/kartikcodes"
 PANEL_DIR="${PANEL_DIR:-/var/www/pterodactyl}"
+PTERO_INSTALLER_URL="https://pterodactyl-installer.se"
 
 need_root() {
   if [[ "${EUID}" -ne 0 ]]; then
@@ -18,12 +22,60 @@ need_root() {
   fi
 }
 
-pause() {
+pause_screen() {
   echo
   read -rp "Press Enter..."
 }
 
-banner() {
+type_text() {
+  local text="$1"
+  local delay="${2:-0.01}"
+  local i
+  for ((i=0; i<${#text}; i++)); do
+    printf "%s" "${text:$i:1}"
+    sleep "$delay"
+  done
+  echo
+}
+
+spinner() {
+  local pid="$1"
+  local msg="$2"
+  local frames=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+  local i=0
+  while kill -0 "$pid" 2>/dev/null; do
+    printf "\r${RED}%s${NC} $msg" "${frames[$i]}"
+    i=$(( (i + 1) % ${#frames[@]} ))
+    sleep 0.08
+  done
+  printf "\r${GREEN}✓${NC} $msg\n"
+}
+
+run_with_spinner() {
+  local msg="$1"
+  shift
+  ("$@" >/tmp/kartikextras-last.log 2>&1) &
+  local pid=$!
+  spinner "$pid" "$msg"
+  wait "$pid" || {
+    echo -e "${RED}Failed: $msg${NC}"
+    echo -e "${YELLOW}Last log:${NC}"
+    tail -40 /tmp/kartikextras-last.log || true
+    return 1
+  }
+}
+
+progress_bar() {
+  local label="$1"
+  echo -ne "${CYAN}$label${NC} "
+  for i in {1..30}; do
+    echo -ne "${RED}█${NC}"
+    sleep 0.025
+  done
+  echo -e " ${GREEN}done${NC}"
+}
+
+intro_animation() {
   clear
   echo -e "${RED}"
   cat <<'BANNER'
@@ -34,8 +86,23 @@ banner() {
 ██║  ██╗██║  ██║██║  ██║   ██║   ██║██║  ██╗
 ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝╚═╝  ╚═╝
 BANNER
-  echo -e "${NC}${CYAN}KartikExtras Installer Portal${NC}"
-  echo -e "${YELLOW}Made by KartikExtras${NC}"
+  echo -e "${NC}${WHITE}        K A R T I K E X T R A S${NC}"
+  echo -e "${YELLOW}        Made by KartikExtras${NC}"
+  echo
+  progress_bar "Loading UI"
+  progress_bar "Checking modules"
+  progress_bar "Preparing menu"
+}
+
+banner() {
+  clear
+  echo -e "${RED}"
+  cat <<'BANNER'
+╔════════════════════════════════════════════════════════════╗
+║              KARTIKEXTRAS INSTALLER PORTAL               ║
+╚════════════════════════════════════════════════════════════╝
+BANNER
+  echo -e "${NC}${YELLOW}Made by KartikExtras${NC}"
   echo "------------------------------------------------------------"
 }
 
@@ -56,11 +123,12 @@ vps_optimizer() {
   need_root
   echo -e "${CYAN}Starting VPS Optimizer...${NC}"
   export DEBIAN_FRONTEND=noninteractive
-  apt-get update -y
-  apt-get upgrade -y
-  apt-get install -y curl wget git unzip zip tar htop nano vim ufw ca-certificates gnupg lsb-release software-properties-common net-tools dnsutils jq screen tmux cron logrotate build-essential
-  apt-get autoremove -y
-  apt-get autoclean -y
+
+  run_with_spinner "apt update" apt-get update -y
+  run_with_spinner "apt upgrade" apt-get upgrade -y
+  run_with_spinner "install useful packages" apt-get install -y curl wget git unzip zip tar htop nano vim ufw ca-certificates gnupg lsb-release software-properties-common net-tools dnsutils jq screen tmux cron logrotate build-essential
+  run_with_spinner "cleanup packages" apt-get autoremove -y
+  apt-get autoclean -y >/dev/null 2>&1 || true
 
   cat >/etc/sysctl.d/99-kartikextras.conf <<'EOF'
 vm.swappiness=10
@@ -73,7 +141,7 @@ net.ipv4.ip_forward=1
 net.ipv4.tcp_max_syn_backlog=65535
 net.core.netdev_max_backlog=16384
 EOF
-  sysctl --system || true
+  sysctl --system >/dev/null 2>&1 || true
 
   cat >/etc/security/limits.d/99-kartikextras.conf <<'EOF'
 * soft nofile 1048576
@@ -85,6 +153,7 @@ EOF
   if ! swapon --show | grep -q "/swapfile"; then
     RAM_MB=$(free -m | awk '/Mem:/ {print $2}')
     if [[ "${RAM_MB:-0}" -lt 4096 ]]; then
+      echo -e "${CYAN}Creating 2GB swap...${NC}"
       fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
       chmod 600 /swapfile
       mkswap /swapfile
@@ -93,29 +162,29 @@ EOF
     fi
   fi
 
-  ufw allow OpenSSH || true
-  ufw allow 22/tcp || true
-  ufw allow 80/tcp || true
-  ufw allow 443/tcp || true
-  ufw allow 8080/tcp || true
-  ufw allow 2022/tcp || true
-  ufw allow 25565/tcp || true
-  ufw allow 25565/udp || true
+  ufw allow OpenSSH >/dev/null 2>&1 || true
+  ufw allow 22/tcp >/dev/null 2>&1 || true
+  ufw allow 80/tcp >/dev/null 2>&1 || true
+  ufw allow 443/tcp >/dev/null 2>&1 || true
+  ufw allow 8080/tcp >/dev/null 2>&1 || true
+  ufw allow 2022/tcp >/dev/null 2>&1 || true
+  ufw allow 25565/tcp >/dev/null 2>&1 || true
+  ufw allow 25565/udp >/dev/null 2>&1 || true
   echo -e "${GREEN}VPS Optimizer complete.${NC}"
 }
 
 install_docker() {
   need_root
   echo -e "${CYAN}Installing Docker...${NC}"
-  apt-get update -y
-  apt-get install -y curl ca-certificates gnupg lsb-release
+  run_with_spinner "apt update" apt-get update -y
+  run_with_spinner "install Docker requirements" apt-get install -y curl ca-certificates gnupg lsb-release
   curl -fsSL https://get.docker.com | sh
   systemctl enable --now docker
   apt-get install -y docker-compose-plugin || true
-  ufw allow 8080/tcp || true
-  ufw allow 2022/tcp || true
-  ufw allow 25565/tcp || true
-  ufw allow 25565/udp || true
+  ufw allow 8080/tcp >/dev/null 2>&1 || true
+  ufw allow 2022/tcp >/dev/null 2>&1 || true
+  ufw allow 25565/tcp >/dev/null 2>&1 || true
+  ufw allow 25565/udp >/dev/null 2>&1 || true
   docker --version || true
   docker compose version || true
   echo -e "${GREEN}Docker installed.${NC}"
@@ -123,8 +192,7 @@ install_docker() {
 
 install_java() {
   need_root
-  apt-get update -y
-  apt-get install -y openjdk-21-jdk
+  run_with_spinner "install Java 21" bash -c "apt-get update -y && apt-get install -y openjdk-21-jdk"
   java -version
 }
 
@@ -150,63 +218,53 @@ java -Xms1G -Xmx2G -jar server.jar nogui
 EOF
   chmod +x start.sh
   echo "eula=true" > eula.txt
-  ufw allow 25565/tcp || true
-  ufw allow 25565/udp || true
+  ufw allow 25565/tcp >/dev/null 2>&1 || true
+  ufw allow 25565/udp >/dev/null 2>&1 || true
   echo -e "${GREEN}Minecraft folder ready: /home/minecraft${NC}"
+}
+
+run_pterodactyl_choice() {
+  need_root
+  local choice="$1"
+  local title="$2"
+
+  clear
+  echo -e "${RED}$title${NC}"
+  echo -e "${YELLOW}Made by KartikExtras${NC}"
+  echo "------------------------------------------------------------"
+  type_text "Starting installer directly..." 0.015
+  progress_bar "Preparing"
+
+  apt-get update -y >/dev/null 2>&1 || true
+  apt-get install -y curl >/dev/null 2>&1 || true
+
+  echo -e "${CYAN}Installer started. Fill details if the installer asks.${NC}"
+  echo -e "${DIM}Mode selected automatically by KartikExtras.${NC}"
+  sleep 1
+
+  # Pterodactyl-installer asks: panel / wings / both. This sends the chosen mode first.
+  printf "%s\n" "$choice" | bash <(curl -s "$PTERO_INSTALLER_URL")
 }
 
 pterodactyl_menu() {
   need_root
   while true; do
     clear
-    echo -e "${RED}KartikExtras Pterodactyl Panel/Wings Menu${NC}"
+    echo -e "${RED}KartikExtras Pterodactyl Install Menu${NC}"
     echo -e "${YELLOW}Made by KartikExtras${NC}"
     echo "------------------------------------------------------------"
-    echo -e "${YELLOW}1.${NC} Install dependencies for Pterodactyl Panel"
-    echo -e "${YELLOW}2.${NC} Install Docker for Wings"
-    echo -e "${YELLOW}3.${NC} Open Pterodactyl/Wings ports"
-    echo -e "${YELLOW}4.${NC} Create Pterodactyl directories"
-    echo -e "${YELLOW}5.${NC} Launch Panel/Wings auto-installer"
-    echo -e "${YELLOW}6.${NC} Show docs links"
-    echo -e "${YELLOW}7.${NC} Back"
+    echo -e "${YELLOW}1.${NC} Panel Install"
+    echo -e "${YELLOW}2.${NC} Wings Install"
+    echo -e "${YELLOW}3.${NC} Panel + Wings Install"
+    echo -e "${YELLOW}4.${NC} Back"
     echo "------------------------------------------------------------"
     read -rp "Choose option: " p
     case "$p" in
-      1)
-        apt-get update -y
-        apt-get install -y curl wget git unzip zip tar software-properties-common ca-certificates apt-transport-https gnupg lsb-release nginx redis-server mariadb-server php php-cli php-gd php-mysql php-mbstring php-bcmath php-xml php-curl php-zip php-fpm php-intl
-        echo -e "${GREEN}Panel dependencies installed.${NC}"
-        pause
-        ;;
-      2) install_docker; pause ;;
-      3)
-        ufw allow 80/tcp || true
-        ufw allow 443/tcp || true
-        ufw allow 8080/tcp || true
-        ufw allow 2022/tcp || true
-        ufw allow 25565/tcp || true
-        ufw allow 25565/udp || true
-        echo -e "${GREEN}Ports opened.${NC}"
-        pause
-        ;;
-      4)
-        mkdir -p /etc/pterodactyl /var/lib/pterodactyl /var/log/pterodactyl /var/www/pterodactyl
-        echo -e "${GREEN}Directories created.${NC}"
-        pause
-        ;;
-      5)
-        read -rp "Type YES to run Panel/Wings auto-installer: " confirm
-        [[ "$confirm" == "YES" ]] && bash <(curl -s https://raw.githubusercontent.com/pterodactyl-installer/pterodactyl-installer/master/install.sh) || echo "Cancelled."
-        pause
-        ;;
-      6)
-        echo "Panel docs: https://pterodactyl.io/panel/1.0/getting_started.html"
-        echo "Wings docs: https://pterodactyl.io/wings/1.0/installing.html"
-        echo "Wings quickstart: https://pterodactyl-wings.mintlify.app/quickstart"
-        pause
-        ;;
-      7) return ;;
-      *) echo "Invalid"; pause ;;
+      1) run_pterodactyl_choice "0" "KartikExtras Panel Install"; pause_screen ;;
+      2) run_pterodactyl_choice "1" "KartikExtras Wings Install"; pause_screen ;;
+      3) run_pterodactyl_choice "2" "KartikExtras Panel + Wings Install"; pause_screen ;;
+      4) return ;;
+      *) echo "Invalid"; pause_screen ;;
     esac
   done
 }
@@ -247,8 +305,8 @@ install_blueprint_file() {
     return
   fi
 
-  apt-get update -y
-  apt-get install -y curl
+  apt-get update -y >/dev/null 2>&1 || true
+  apt-get install -y curl >/dev/null 2>&1 || true
 
   local tmp="/tmp/kartikextras-blueprint-$$"
   mkdir -p "$tmp"
@@ -307,17 +365,17 @@ theme_installer() {
     echo "------------------------------------------------------------"
     read -rp "Choose option: " t
     case "$t" in
-      1) blueprint_installer; pause ;;
-      2) install_blueprint_file "mcplugins.blueprint" "MC Plugins"; pause ;;
-      3) install_blueprint_file "minecraftplayermanager.blueprint" "Minecraft Player Manager"; pause ;;
-      4) install_blueprint_file "nebula.blueprint" "Nebula Theme"; pause ;;
-      5) install_blueprint_file "snowflakes.blueprint" "Snowflakes Theme"; pause ;;
-      6) install_blueprint_file "subdomains.blueprint" "Subdomains"; pause ;;
-      7) install_blueprint_file "versionchanger.blueprint" "Version Changer"; pause ;;
-      8) install_blueprint_file "euphoriatheme.blueprint" "Euphoria Theme"; pause ;;
-      9) install_blueprint_file "loader.blueprint" "Loader"; pause ;;
+      1) blueprint_installer; pause_screen ;;
+      2) install_blueprint_file "mcplugins.blueprint" "MC Plugins"; pause_screen ;;
+      3) install_blueprint_file "minecraftplayermanager.blueprint" "Minecraft Player Manager"; pause_screen ;;
+      4) install_blueprint_file "nebula.blueprint" "Nebula Theme"; pause_screen ;;
+      5) install_blueprint_file "snowflakes.blueprint" "Snowflakes Theme"; pause_screen ;;
+      6) install_blueprint_file "subdomains.blueprint" "Subdomains"; pause_screen ;;
+      7) install_blueprint_file "versionchanger.blueprint" "Version Changer"; pause_screen ;;
+      8) install_blueprint_file "euphoriatheme.blueprint" "Euphoria Theme"; pause_screen ;;
+      9) install_blueprint_file "loader.blueprint" "Loader"; pause_screen ;;
       10) return ;;
-      *) echo "Invalid"; pause ;;
+      *) echo "Invalid"; pause_screen ;;
     esac
   done
 }
@@ -327,6 +385,8 @@ full_setup() {
   install_docker
   pterodactyl_menu
 }
+
+intro_animation
 
 while true; do
   banner
@@ -344,16 +404,16 @@ while true; do
   read -rp "Choose option: " choice
 
   case "$choice" in
-    1) vps_optimizer; pause ;;
-    2) install_docker; pause ;;
-    3) install_java; pause ;;
-    4) install_node; pause ;;
-    5) minecraft_server_setup; pause ;;
+    1) vps_optimizer; pause_screen ;;
+    2) install_docker; pause_screen ;;
+    3) install_java; pause_screen ;;
+    4) install_node; pause_screen ;;
+    5) minecraft_server_setup; pause_screen ;;
     6) pterodactyl_menu ;;
     7) theme_installer ;;
-    8) full_setup; pause ;;
-    9) server_info; pause ;;
+    8) full_setup; pause_screen ;;
+    9) server_info; pause_screen ;;
     10) exit 0 ;;
-    *) echo -e "${RED}Invalid option.${NC}"; pause ;;
+    *) echo -e "${RED}Invalid option.${NC}"; pause_screen ;;
   esac
 done
