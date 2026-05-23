@@ -1,24 +1,22 @@
-# KartikExtras Installer Portal
+# KartikExtras Installer Portal - Number Fixed
 
 Main command:
 ```bash
 bash <(curl -s https://idlekartik.github.io/kartikcodes/scripts/install.sh)
 ```
 
-Credits:
+Fix:
+- Theme installer numbering fixed.
+- Blueprint Installer = 1
+- MC Plugins = 2
+- Minecraft Player Manager = 3
+- ...
+- Back = 10
+
+Credit:
 Made by KartikExtras
 
-Included Blueprint files:
-- mcplugins.blueprint
-- minecraftplayermanager.blueprint
-- nebula.blueprint
-- snowflakes.blueprint
-- subdomains.blueprint
-- versionchanger.blueprint
-- euphoriatheme.blueprint
-- loader.blueprint
-
-Theme menu:
-7 -> Pterodactyl Theme Installer
+Note:
+The external Blueprint setup may show its own banner while running. This installer menu and portal show only KartikExtras branding.
 
 Made by KartikExtras
