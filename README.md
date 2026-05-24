@@ -22,3 +22,12 @@ Note:
 The external Pterodactyl installer may still ask for required setup details such as domain/email/database choices and may show its own output while running.
 
 Made by KartikExtras
+
+
+## Auto confirm update
+Pterodactyl menu now sends:
+- Panel Install: `0` then `y`
+- Wings Install: `1` then `y`
+- Panel + Wings Install: `2` then `y`
+
+Made by KartikExtras
