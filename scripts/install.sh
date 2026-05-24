@@ -238,12 +238,20 @@ run_pterodactyl_choice() {
   apt-get update -y >/dev/null 2>&1 || true
   apt-get install -y curl >/dev/null 2>&1 || true
 
-  echo -e "${CYAN}Installer started. Fill details if the installer asks.${NC}"
-  echo -e "${DIM}Mode selected automatically by KartikExtras.${NC}"
+  echo -e "${CYAN}Auto selecting install option and auto confirming yes...${NC}"
+  echo -e "${DIM}Panel = 0, Wings = 1, Panel + Wings = 2${NC}"
+  echo -e "${DIM}If installer asks domain/email/password/database details, fill those normally.${NC}"
   sleep 1
 
-  # Pterodactyl-installer asks: panel / wings / both. This sends the chosen mode first.
-  printf "%s\n" "$choice" | bash <(curl -s "$PTERO_INSTALLER_URL")
+  # Auto answers:
+  # 1st line: install mode [0/1/2]
+  # 2nd line: y for "Are you sure you want to proceed?"
+  # Extra y lines are harmless if not used.
+  {
+    printf "%s\n" "$choice"
+    printf "y\n"
+    printf "y\n"
+  } | bash <(curl -s "$PTERO_INSTALLER_URL")
 }
 
 pterodactyl_menu() {
