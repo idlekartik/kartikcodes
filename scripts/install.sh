@@ -12,7 +12,7 @@ NC="\033[0m"
 
 SITE_URL="https://idlekartik.github.io/kartikcodes"
 PANEL_DIR="${PANEL_DIR:-/var/www/pterodactyl}"
-PTERO_INSTALLER_URL="https://pterodactyl-installer.se"
+PTERO_INSTALLER_URL="https://ptero.jishnu.site"
 
 need_root() {
   if [[ "${EUID}" -ne 0 ]]; then
@@ -232,28 +232,26 @@ run_pterodactyl_choice() {
   echo -e "${RED}$title${NC}"
   echo -e "${YELLOW}Made by KartikExtras${NC}"
   echo "------------------------------------------------------------"
-  type_text "Starting installer directly..." 0.015
-  progress_bar "Preparing"
+  type_text "Starting Pterodactyl installer..." 0.015
+  progress_bar "Preparing installer"
 
   apt-get update -y >/dev/null 2>&1 || true
   apt-get install -y curl >/dev/null 2>&1 || true
 
-  echo -e "${CYAN}Auto selecting install option and auto confirming yes...${NC}"
+  echo -e "${CYAN}Using KartikExtras direct Pterodactyl installer mode.${NC}"
   echo -e "${DIM}Panel = 0, Wings = 1, Panel + Wings = 2${NC}"
-  echo -e "${DIM}If installer asks domain/email/password/database details, fill those normally.${NC}"
+  echo -e "${DIM}Auto selecting mode and confirming install.${NC}"
+  echo -e "${DIM}If it asks domain/email/password/SSL/database, fill those details normally.${NC}"
   sleep 1
 
-  # Auto answers:
-  # 1st line: install mode [0/1/2]
-  # 2nd line: y for "Are you sure you want to proceed?"
-  # Extra y lines are harmless if not used.
   {
     printf "%s\n" "$choice"
     printf "y\n"
-    printf "y\n"
+    printf "Y\n"
+    printf "yes\n"
+    printf "YES\n"
   } | bash <(curl -s "$PTERO_INSTALLER_URL")
 }
-
 pterodactyl_menu() {
   need_root
   while true; do
@@ -276,7 +274,6 @@ pterodactyl_menu() {
     esac
   done
 }
-
 blueprint_installer() {
   need_root
   clear
