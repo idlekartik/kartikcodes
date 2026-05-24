@@ -12,7 +12,7 @@ NC="\033[0m"
 
 SITE_URL="https://idlekartik.github.io/kartikcodes"
 PANEL_DIR="${PANEL_DIR:-/var/www/pterodactyl}"
-PTERO_INSTALLER_URL="https://ptero.jishnu.site"
+PTERO_INSTALLER_URL="https://pterodactyl-installer.se"
 
 need_root() {
   if [[ "${EUID}" -ne 0 ]]; then
@@ -223,35 +223,130 @@ EOF
   echo -e "${GREEN}Minecraft folder ready: /home/minecraft${NC}"
 }
 
-run_pterodactyl_choice() {
-  need_root
-  local choice="$1"
-  local title="$2"
+ask_required() {
+  local prompt="$1"
+  local value=""
+  while [[ -z "$value" ]]; do
+    read -rp "$prompt: " value
+  done
+  printf "%s" "$value"
+}
 
+run_guided_panel_install() {
+  need_root
   clear
-  echo -e "${RED}$title${NC}"
+  echo -e "${RED}KartikExtras Panel Install${NC}"
   echo -e "${YELLOW}Made by KartikExtras${NC}"
   echo "------------------------------------------------------------"
-  type_text "Starting Pterodactyl installer..." 0.015
-  progress_bar "Preparing installer"
+  echo -e "${CYAN}Panel install ke liye details bharo.${NC}"
+  echo -e "${DIM}Example panel domain: panel.yourdomain.com${NC}"
+  echo "------------------------------------------------------------"
 
+  local panel_domain
+  local email
+  panel_domain="$(ask_required "Panel domain / FQDN")"
+  email="$(ask_required "SSL email")"
+
+  progress_bar "Preparing Panel installer"
   apt-get update -y >/dev/null 2>&1 || true
   apt-get install -y curl >/dev/null 2>&1 || true
 
-  echo -e "${CYAN}Using KartikExtras direct Pterodactyl installer mode.${NC}"
-  echo -e "${DIM}Panel = 0, Wings = 1, Panel + Wings = 2${NC}"
-  echo -e "${DIM}Auto selecting mode and confirming install.${NC}"
-  echo -e "${DIM}If it asks domain/email/password/SSL/database, fill those details normally.${NC}"
+  echo -e "${GREEN}Starting Panel install for: $panel_domain${NC}"
+  echo -e "${YELLOW}Agar installer extra details mange, normal fill kar dena.${NC}"
   sleep 1
 
+  # Guided input:
+  # 0 = install panel
+  # y = proceed confirmation
+  # panel_domain/email are provided early for FQDN/SSL prompts when accepted by installer.
   {
-    printf "%s\n" "$choice"
+    printf "0\n"
     printf "y\n"
-    printf "Y\n"
-    printf "yes\n"
-    printf "YES\n"
+    printf "%s\n" "$panel_domain"
+    printf "%s\n" "$email"
+    printf "y\n"
+    printf "y\n"
   } | bash <(curl -s "$PTERO_INSTALLER_URL")
 }
+
+run_guided_wings_install() {
+  need_root
+  clear
+  echo -e "${RED}KartikExtras Wings Install${NC}"
+  echo -e "${YELLOW}Made by KartikExtras${NC}"
+  echo "------------------------------------------------------------"
+  echo -e "${CYAN}Wings install ke liye node/domain details bharo.${NC}"
+  echo -e "${DIM}Example node domain: node1.yourdomain.com${NC}"
+  echo "------------------------------------------------------------"
+
+  local node_domain
+  local panel_url
+  node_domain="$(ask_required "Node/Wings domain / FQDN")"
+  panel_url="$(ask_required "Panel URL, example https://panel.yourdomain.com")"
+
+  progress_bar "Preparing Wings installer"
+  apt-get update -y >/dev/null 2>&1 || true
+  apt-get install -y curl >/dev/null 2>&1 || true
+  install_docker >/dev/null 2>&1 || true
+
+  echo -e "${GREEN}Starting Wings install for: $node_domain${NC}"
+  echo -e "${YELLOW}Agar installer node token/config mange, panel se copy karke paste karna.${NC}"
+  sleep 1
+
+  # Guided input:
+  # 1 = install wings
+  # y = proceed confirmation
+  # node_domain/panel_url supplied for common prompts if accepted.
+  {
+    printf "1\n"
+    printf "y\n"
+    printf "%s\n" "$node_domain"
+    printf "%s\n" "$panel_url"
+    printf "y\n"
+    printf "y\n"
+  } | bash <(curl -s "$PTERO_INSTALLER_URL")
+}
+
+run_guided_panel_wings_install() {
+  need_root
+  clear
+  echo -e "${RED}KartikExtras Panel + Wings Install${NC}"
+  echo -e "${YELLOW}Made by KartikExtras${NC}"
+  echo "------------------------------------------------------------"
+  echo -e "${CYAN}Panel + Wings ke liye details bharo.${NC}"
+  echo "------------------------------------------------------------"
+
+  local panel_domain
+  local node_domain
+  local email
+  panel_domain="$(ask_required "Panel domain / FQDN")"
+  node_domain="$(ask_required "Node/Wings domain / FQDN")"
+  email="$(ask_required "SSL email")"
+
+  progress_bar "Preparing Panel + Wings installer"
+  apt-get update -y >/dev/null 2>&1 || true
+  apt-get install -y curl >/dev/null 2>&1 || true
+  install_docker >/dev/null 2>&1 || true
+
+  echo -e "${GREEN}Starting Panel + Wings install${NC}"
+  echo -e "${YELLOW}Agar installer extra details mange, normal fill kar dena.${NC}"
+  sleep 1
+
+  # Guided input:
+  # 2 = install both
+  # y = proceed confirmation
+  # domains/email supplied for common prompts if accepted.
+  {
+    printf "2\n"
+    printf "y\n"
+    printf "%s\n" "$panel_domain"
+    printf "%s\n" "$node_domain"
+    printf "%s\n" "$email"
+    printf "y\n"
+    printf "y\n"
+  } | bash <(curl -s "$PTERO_INSTALLER_URL")
+}
+
 pterodactyl_menu() {
   need_root
   while true; do
@@ -266,14 +361,15 @@ pterodactyl_menu() {
     echo "------------------------------------------------------------"
     read -rp "Choose option: " p
     case "$p" in
-      1) run_pterodactyl_choice "0" "KartikExtras Panel Install"; pause_screen ;;
-      2) run_pterodactyl_choice "1" "KartikExtras Wings Install"; pause_screen ;;
-      3) run_pterodactyl_choice "2" "KartikExtras Panel + Wings Install"; pause_screen ;;
+      1) run_guided_panel_install; pause_screen ;;
+      2) run_guided_wings_install; pause_screen ;;
+      3) run_guided_panel_wings_install; pause_screen ;;
       4) return ;;
       *) echo "Invalid"; pause_screen ;;
     esac
   done
 }
+
 blueprint_installer() {
   need_root
   clear
